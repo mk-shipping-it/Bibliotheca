@@ -1,0 +1,12 @@
+/* Layout Container */
+.container {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+}
+
+.result-count {
+    font-size: 0.875rem;
+    color: #666;
+    margin-bottom: 20px;
+}
