@@ -1,0 +1,46 @@
+.site-header {
+    background: #2D4475;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.site-logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+}
+
+.auth-nav {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.nav-link {
+    color: #ccd5e8;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.nav-link:hover {
+    color: #fff;
+}
+
+.nav-user {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+}

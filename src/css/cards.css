@@ -1,0 +1,35 @@
+/* Card Grid */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 24px 20px;
+}
+
+/* Individual Card */
+.card {
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.card .poster {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.card .poster img {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card .title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
