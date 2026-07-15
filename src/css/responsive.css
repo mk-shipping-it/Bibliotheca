@@ -1,0 +1,48 @@
+/* Responsive layout that adapts smoothly to changing viewport sizes */
+:root {
+    --card-gap: clamp(16px, 2vw, 24px);
+    --page-padding: clamp(16px, 3vw, 32px);
+    --header-padding: clamp(12px, 2vw, 20px);
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: var(--card-gap);
+}
+
+.container {
+    padding: clamp(24px, 3vw, 48px) var(--page-padding) clamp(32px, 4vw, 56px);
+}
+
+.page-title {
+    font-size: clamp(1rem, 1.6vw, 1.25rem);
+}
+
+.site-header {
+    padding: var(--header-padding) var(--page-padding);
+}
+
+.search-wrapper {
+    padding: 0 var(--page-padding);
+}
+
+.search-container {
+    max-width: min(100%, 720px);
+}
+
+.card .title {
+    font-size: clamp(0.75rem, 1.4vw, 0.875rem);
+}
+
+@media (max-width: 640px) {
+    .card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .card-grid {
+        grid-template-columns: 1fr;
+    }
+}
