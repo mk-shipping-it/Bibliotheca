@@ -1,0 +1,1 @@
+searchInput.addEventListener('input', () => { clearTimeout(window._st); window._st = setTimeout(onSearch, 300) })
