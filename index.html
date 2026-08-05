@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliotheca</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#2D4475">
+    <script>
+    if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js') }) }
+    </script>
+    <link rel="stylesheet" href="src/css/base.css">
+    <link rel="stylesheet" href="src/css/header.css">
+    <link rel="stylesheet" href="src/css/search.css">
+    <link rel="stylesheet" href="src/css/layout.css">
+    <link rel="stylesheet" href="src/css/cards.css">
+    <link rel="stylesheet" href="src/css/responsive.css">
+</head>
+<body>
+    <header class="site-header">
+        <h1 class="page-title"><a href="index.html" class="site-logo">Bibliotheca</a></h1>
+        <nav class="auth-nav" id="auth-nav"></nav>
+    </header>
+    <div class="search-wrapper">
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Search books..." autocomplete="off">
+        </div>
+    </div>
+    <main class="container">
+        <div class="card-grid" id="card-grid"></div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+    <script src="src/state.js"></script>
+    <script src="src/renderBooks.js"></script>
+    <script src="src/onSearch.js"></script>
+    <script src="src/searchEventHandlers.js"></script>
+    <script src="src/auth.js"></script>
+    <script src="src/nav.js"></script>
+    <script src="src/init.js"></script>
+</body>
+</html>
