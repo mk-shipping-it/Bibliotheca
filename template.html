@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliotheca</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#2D4475">
+    <script>
+    if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js') }) }
+    </script>
+    <link rel="stylesheet" href="src/css/base.css">
+    <link rel="stylesheet" href="src/css/header.css">
+    <style>
+        .detail-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+            display: flex;
+            gap: 48px;
+        }
+
+        .sidebar {
+            flex: 0 0 280px;
+            position: sticky;
+            top: 40px;
+            align-self: flex-start;
+        }
+
+        .sidebar .cover-wrapper {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-bottom: 16px;
+        }
+
+        .want-to-read {
+            display: block;
+            background-color: #2D4475;
+            color: #fff;
+            text-align: center;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            letter-spacing: 0.01em;
+        }
+
+        .want-to-read:hover {
+            background-color: #1f3055;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .book-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1.2;
+            margin-bottom: 6px;
+        }
+
+        .book-author {
+            font-size: 1.15rem;
+            color: #555;
+            margin-bottom: 36px;
+        }
+
+        .book-author a {
+            color: #2D4475;
+            text-decoration: none;
+        }
+
+        .book-author a:hover {
+            text-decoration: underline;
+        }
+
+        .section-header {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 16px;
+            letter-spacing: 0.02em;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #e8e8e8;
+            margin: 12px 0;
+        }
+
+        .summary {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #333;
+            margin-top: 20px;
+        }
+
+        .summary p {
+            margin-bottom: 1em;
+        }
+
+        @media (max-width: 768px) {
+            .detail-container {
+                flex-direction: column;
+                padding: 24px 16px 60px;
+                gap: 32px;
+            }
+            .sidebar {
+                flex: none;
+                width: 200px;
+                position: static;
+            }
+            .book-title {
+                font-size: 1.5rem;
+            }
+        }
+        .review { padding: 16px 0; border-bottom: 1px solid #e8e8e8; }
+        .review:last-child { border-bottom: none; }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .review-author { font-weight: 600; font-size: 0.9rem; color: #2D4475; }
+        .review-date { font-size: 0.8rem; color: #999; }
+        .review-text { font-size: 0.95rem; line-height: 1.6; color: #333; }
+        .review-rating { color: #f5a623; font-size: 1rem; }
+        .review-actions { margin-top: 8px; }
+        .report-btn { font-size: 0.8rem; color: #999; cursor: pointer; background: none; border: none; padding: 0; }
+        .report-btn:hover { color: #c00; }
+        .review-form { margin-bottom: 24px; }
+        .review-form textarea { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; resize: vertical; min-height: 80px; box-sizing: border-box; font-family: inherit; }
+        .review-form select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; margin-bottom: 12px; }
+        .review-form button { padding: 10px 20px; background: #2D4475; color: #fff; border: none; border-radius: 4px; font-size: 0.95rem; cursor: pointer; }
+        .review-form button:hover { background: #1f3055; }
+        .no-reviews { color: #999; font-style: italic; }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <a href="index.html" class="site-logo">Bibliotheca</a>
+        <nav class="auth-nav" id="auth-nav"></nav>
+    </header>
+    <div class="detail-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="cover-wrapper image-container">
+                <img id="cover-img" class="image-fill" src="" alt="Book cover">
+            </div>
+            <a class="want-to-read" id="want-to-read-link" href="#" target="_blank" rel="noopener noreferrer">Want to Read?</a>
+        </aside>
+        <main class="main-content">
+            <h2 class="book-title" id="book-title">Book Title</h2>
+            <p class="book-author" id="book-author">by <a href="#" id="author-link">Author Name</a></p>
+
+            <div class="section-header">Summary</div>
+            <div class="summary" id="summary"></div>
+
+            <div class="section-header" style="margin-top:36px">Reviews</div>
+            <div id="reviews-list"></div>
+            <div id="review-form-area"></div>
+        </main>
+    </div>
+    <script src="src/auth.js"></script>
+    <script src="src/nav.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const cover = params.get('cover');
+        const title = params.get('title');
+        const author = params.get('author');
+
+        if (title) {
+            document.getElementById('book-title').textContent = title;
+            document.title = title;
+        }
+        if (author) {
+            const authorLink = document.getElementById('author-link');
+            authorLink.textContent = author;
+            authorLink.href = 'https://books.google.com/books?q=inauthor:' + encodeURIComponent(author);
+        }
+        const wantToRead = document.getElementById('want-to-read-link');
+        if (title) wantToRead.href = 'https://books.google.com/books?q=' + encodeURIComponent(title);
+
+        if (cover) {
+            const img = document.getElementById('cover-img');
+            img.alt = title || 'Book cover';
+            const el = document.getElementById('summary');
+            el.innerHTML = '<p><em>Loading summary...</em></p>';
+            fetch('/api/books/by-cover/' + encodeURIComponent(cover))
+                .then(r => r.json())
+                .then(b => {
+                    if (b.coverUrl) img.src = b.coverUrl;
+                    el.innerHTML = '<p>' + escapeHtml(b.description || 'No summary available.') + '</p>';
+                })
+                .catch(() => { el.innerHTML = '<p>No summary available.</p>'; });
+        }
+
+        async function loadReviews() {
+            const list = document.getElementById('reviews-list');
+            const area = document.getElementById('review-form-area');
+            try {
+                const reviews = await apiFetch('/reviews/book/' + cover);
+                if (reviews.length === 0) {
+                    list.innerHTML = '<p class="no-reviews">No reviews yet.</p>';
+                } else {
+                    list.innerHTML = reviews.map(r => '<div class="review" data-id="' + r._id + '">' +
+                        '<div class="review-header"><span class="review-author">' + escapeHtml(r.userName || r.userId?.name || 'Anonymous') + '</span>' +
+                        '<span class="review-date">' + new Date(r.createdAt).toLocaleDateString() + '</span></div>' +
+                        '<div class="review-text">' + escapeHtml(r.text) + '</div>' +
+                        '<div class="review-actions">' + (getAuth() ? '<button class="report-btn" onclick="reportReview(\'' + r._id + '\')">Report</button>' : '') + '</div>' +
+                        '</div>').join('')
+                }
+                const auth = getAuth()
+                if (auth) {
+                    area.innerHTML = '<div class="review-form"><h3>Leave a comment</h3>' +
+                        '<textarea id="review-text" placeholder="Write a comment..."></textarea>' +
+                        '<div style="margin-top:8px"><button onclick="submitReview()">Post</button></div></div>'
+                }
+            } catch { list.innerHTML = '<p class="no-reviews">Failed to load reviews.</p>' }
+        }
+
+        async function submitReview() {
+            const text = document.getElementById('review-text').value
+            if (!text.trim()) return alert('Write a comment first.')
+            try {
+                await apiFetch('/reviews', { method: 'POST', body: JSON.stringify({ bookCover: cover, bookTitle: title, text }) })
+                document.getElementById('review-text').value = ''
+                loadReviews()
+            } catch (e) { alert(e.message) }
+        }
+
+        async function reportReview(reviewId) {
+            const reason = prompt('Why are you reporting this review?')
+            if (!reason) return
+            try {
+                await apiFetch('/reports', { method: 'POST', body: JSON.stringify({ reviewId, reason }) })
+                alert('Report submitted. Thank you.')
+            } catch (e) { alert(e.message) }
+        }
+
+        function escapeHtml(s) {
+            const d = document.createElement('div')
+            d.textContent = s
+            return d.innerHTML
+        }
+
+        loadReviews()
+    </script>
+</body>
+</html>
+
