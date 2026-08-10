@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Bibliotheca</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#2D4475">
+<script>
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js') }) }
+</script>
+<link rel="stylesheet" href="src/css/base.css">
+<link rel="stylesheet" href="src/css/header.css">
+<style>
+.auth-form { max-width: 400px; margin: 60px auto; padding: 0 24px; }
+.auth-form h2 { margin-bottom: 24px; }
+.auth-form input { width: 100%; padding: 10px 12px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; box-sizing: border-box; }
+.auth-form button { width: 100%; padding: 12px; background: #2D4475; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+.auth-form button:hover { background: #1f3055; }
+.auth-form .error { color: #c00; margin-bottom: 12px; }
+.auth-form .google-btn { display: block; text-align: center; padding: 12px; background: #fff; color: #333; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; margin-top: 12px; font-size: 0.95rem; }
+.auth-form .google-btn:hover { background: #f5f5f5; }
+.auth-form p { text-align: center; margin-top: 16px; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <h1 class="page-title"><a href="index.html" class="site-logo">Bibliotheca</a></h1>
+</header>
+<div class="auth-form">
+  <h2>Sign in</h2>
+  <a class="google-btn" href="/api/auth/google">Continue with Google</a>
+</div>
+</body>
+</html>
