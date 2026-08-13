@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Bibliotheca</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#2D4475">
+<script>
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js') }) }
+</script>
+<link rel="stylesheet" href="src/css/base.css">
+<link rel="stylesheet" href="src/css/header.css">
+<style>
+.container { max-width: 1100px; margin: 40px auto; padding: 0 24px; }
+.stats { display:grid; grid-template-columns: repeat(4,1fr); gap:12px; margin: 16px 0 28px; }
+.stat { background:#fff; border:1px solid #e8e8e8; border-radius:8px; padding:14px; text-align:center; }
+.stat .label { font-size:0.8rem; color:#666; }
+.stat .value { font-size:1.4rem; font-weight:700; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e8e8e8; font-size: 0.9rem; }
+th { font-weight: 700; color: #1a1a1a; border-bottom: 2px solid #e0e0e0; }
+.table-scroll { max-height: 420px; overflow-y: auto; }
+.button-43 { -webkit-font-smoothing: antialiased; font-family: "helvetica neue", helvetica, arial, sans-serif; font-size: 12px; margin: 10px auto; display: inline-block; padding: 5px 15px; background: #3b88d8; background: -moz-linear-gradient(0% 100% 90deg, #377ad0, #52a8e8); background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#52a8e8), to(#377ad0)); background: linear-gradient(top, #52a8e8 0%, #377ad0 100%); border-top: 1px solid #4081af; border-right: 1px solid #2e69a3; border-bottom: 1px solid #20559a; border-left: 1px solid #2e69a3; -moz-box-shadow: inset 0 1px 0 0 #72b9eb, 0 1px 2px 0 rgba(0, 0, 0, .3); -webkit-box-shadow: inset 0 1px 0 0 #72b9eb, 0 1px 2px 0 rgba(0, 0, 0, .3); text-shadow: 0 -1px 1px #3275bc; -webkit-background-clip: padding-box; color: #eeeeee; cursor: pointer; border-radius: 25px; }
+.button-43:hover { background: #2a81d7; background: -moz-linear-gradient(0% 100% 90deg, #206bcb, #3e9ee5); background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#3e9ee5), to(#206bcb)); background: linear-gradient(top, #3e9ee5 0%, #206bcb 100%); border-top: 1px solid #2a73a6; border-right: 1px solid #165899; border-bottom: 1px solid #07428f; border-left: 1px solid #165899; -moz-box-shadow: inset 0 1px 0 0 #62b1e9; -webkit-box-shadow: inset 0 1px 0 0 #62b1e9; text-shadow: 0 -1px 1px #1d62ab; }
+.button-43:active { background: #3282d3; border: 1px solid #154c8c; border-bottom: 1px solid #0e408e; -moz-box-shadow: inset 0 0 6px 3px #1657b5, 0 1px 0 0 rgba(255, 255, 255, .1); -webkit-box-shadow: inset 0 0 6px 3px #1657b5, 0 1px 0 0 rgba(255, 255, 255, .1); text-shadow: 0 -1px 1px #2361a4; }
+table.compact th, table.compact td { padding: 8px 10px; font-size: 0.85rem; }
+.not-admin { text-align: center; padding: 60px 24px; color: #999; }
+.section { background:#fff; border:1px solid #e8e8e8; border-radius:8px; padding:20px; margin-bottom:28px; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <h1 class="page-title"><a href="index.html" class="site-logo">Bibliotheca</a></h1>
+  <nav class="auth-nav" id="auth-nav"></nav>
+</header>
+<div class="container" id="admin-root"></div>
+<script src="src/auth.js"></script>
+<script src="src/nav.js"></script>
+<script>
+async function init() {
+  const auth = getAuth()
+  if (!auth || auth.user.role !== 'admin') {
+    document.getElementById('admin-root').innerHTML = '<div class="not-admin"><h2>Admins only</h2><p><a href="index.html">Go home</a></p></div>'
+    return
+  }
+  document.getElementById('admin-root').innerHTML = `
+    <h2>Reports</h2>
+    <div class="stats">
+      <div class="stat"><div class="label">Manual</div><div class="value" id="stat-pending">—</div></div>
+      <div class="stat"><div class="label">Auto</div><div class="value" id="stat-auto">—</div></div>
+      <div class="stat"><div class="label">Banned</div><div class="value" id="stat-bots">—</div></div>
+      <div class="stat"><div class="label">Total reports</div><div class="value" id="stat-total">—</div></div>
+    </div>
+    <div class="section"><h3>Banned users</h3><div id="bots-table"><p style="color:#999;">Loading…</p></div></div>
+    <div class="section"><h3>Reported Reviews</h3><div id="reports-table" class="table-scroll"><p style="color:#999;">Loading…</p></div></div>
+  `
+  loadReports()
+  loadBots()
+}
+
+async function loadReports() {
+  const el = document.getElementById('reports-table')
+  try {
+    const reports = await apiFetch('/admin/reports')
+    document.getElementById('stat-total').textContent = reports.length
+    document.getElementById('stat-pending').textContent = reports.filter(r=>!r.isAuto).length
+    document.getElementById('stat-auto').textContent = reports.filter(r=>r.isAuto).length
+    if (reports.length === 0) { el.innerHTML = '<p>No reports — system is clean.</p>'; return }
+    el.innerHTML = '<table class="compact"><thead><tr><th>Review</th><th>Reason</th><th>Reported by</th><th>Type</th></tr></thead><tbody>' +
+      reports.map(r => '<tr>' +
+        '<td>' + escapeHtml((r.reviewText||'').substring(0, 110)) + '</td>' +
+        '<td>' + escapeHtml(r.reason) + '</td>' +
+        '<td>' + escapeHtml(r.reportedBy?.name || (r.isAuto ? 'system' : 'Anonymous')) + '</td>' +
+        '<td>' + (r.isAuto ? 'auto' : 'manual') + '</td>' +
+        '</tr>').join('') + '</tbody></table>'
+  } catch { el.innerHTML = '<p>Failed to load reports.</p>' }
+}
+
+async function loadBots(){
+  const el=document.getElementById('bots-table')
+  try{
+    const bots = await apiFetch('/admin/bots')
+    document.getElementById('stat-bots').textContent = bots.length
+    if (!bots.length){ el.innerHTML='<p style="color:#999;">No banned users.</p>'; return }
+    el.innerHTML='<table class="compact"><thead><tr><th>User</th><th>Email</th><th>Score</th><th>Reason</th><th>Banned</th><th>Action</th></tr></thead><tbody>'+
+      bots.map(u=>'<tr><td>'+escapeHtml(u.name)+'</td><td>'+escapeHtml(u.email||'—')+'</td><td>'+u.botScore+'</td><td>'+escapeHtml(u.bannedReason||'')+'</td><td>'+new Date(u.bannedAt).toLocaleDateString()+'</td><td><button class="button-43" onclick="unban(\''+u._id+'\')"><span class="text">Unban</span></button></td></tr>').join('')+'</tbody></table>'
+  } catch { el.innerHTML='<p>Failed to load bots.</p>' }
+}
+
+async function unban(id){ await apiFetch('/admin/users/'+id+'/unban',{method:'POST'}); loadBots() }
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML }
+
+init()
+</script>
+</body>
+</html>
