@@ -21,6 +21,18 @@ router.post('/', auth, async (req, res) => {
     const { bookCover, bookTitle, rating, text } = req.body
     if (!text || text.trim().length < 10) return res.status(400).json({ error: 'Review too short' })
 
+    // drop gibberish before saving (low-effort spam: "aaaaaa", "asdfasdf")
+    const trimmed = text.trim()
+    const letters = trimmed.toLowerCase().replace(/[^a-z]/g, '')
+    const isGibberish =
+      /^(.)\1{5,}$/.test(trimmed) ||                                  // repeated single char, e.g. "aaaaaa"
+      (letters.length >= 10 && new Set(letters).size / letters.length < 0.5)  // near-zero diversity, e.g. "asdfasdfasdf"
+    if (isGibberish) {
+      await Report.create({ reviewText: text, bookCover, reason: 'auto: dropped gibberish', status: 'auto-flagged', isAuto: true, reportedBy: null })
+      await User.findByIdAndUpdate(req.user.id, { $inc: { botScore: 1 }, lastReviewAt: new Date() })
+      return res.status(400).json({ error: 'Low-effort gibberish review was not posted.' })
+    }
+
     // lifelike auto-moderation: profanity → auto-report (bad-words: filter.isProfane)
     if (matcher.hasMatch(text)) {
       await Report.create({ reviewText: text, bookCover, reason: 'auto: profanity detected', status: 'auto-flagged', isAuto: true, reportedBy: null })
@@ -46,11 +58,6 @@ router.post('/', auth, async (req, res) => {
     await User.findByIdAndUpdate(req.user.id, { lastReviewAt: new Date() })
 
     const review = await Review.create({ bookCover, bookTitle, rating: rating ?? null, text, userId: req.user.id, userName: req.user.name })
-
-    // auto-report low-effort gibberish (e.g. "aaaaaa" or <15 chars without spaces) — appears real
-    if (/^(.)\1{5,}$/.test(text.trim()) || text.trim().split(/\s+/).length < 3) {
-      await Report.create({ reviewId: review._id, reviewText: text, bookCover, reason: 'auto: low-effort/gibberish', status: 'auto-flagged', isAuto: true, reportedBy: null })
-    }
 
     res.status(201).json(review)
   } catch (e) { res.status(500).json({ error: e.message }) }
