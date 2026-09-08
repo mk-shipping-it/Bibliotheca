@@ -3,9 +3,9 @@ const Review = require('../models/Review')
 const Report = require('../models/Report')
 const User = require('../models/User')
 const { auth } = require('../middleware/auth')
-const Filter = require('bad-words')
+const { RegExpMatcher, englishDataset, englishRecommendedTransformers } = require('obscenity')
+const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers })
 const stringSimilarity = require('string-similarity')
-const filter = new Filter()
 
 const router = express.Router()
 
@@ -22,7 +22,7 @@ router.post('/', auth, async (req, res) => {
     if (!text || text.trim().length < 10) return res.status(400).json({ error: 'Review too short' })
 
     // lifelike auto-moderation: profanity → auto-report (bad-words: filter.isProfane)
-    if (filter.isProfane(text)) {
+    if (matcher.hasMatch(text)) {
       await Report.create({ reviewText: text, bookCover, reason: 'auto: profanity detected', status: 'auto-flagged', isAuto: true, reportedBy: null })
       // bump botScore but don't block — appears as flagged, admin sees it
       await User.findByIdAndUpdate(req.user.id, { $inc: { botScore: 1 }, lastReviewAt: new Date() })
