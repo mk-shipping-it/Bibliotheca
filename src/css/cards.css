@@ -92,10 +92,6 @@
 .delete-btn:hover {
     text-decoration: underline;
 }
-.review-rating {
-    color: #f5a623;
-    font-size: 1rem;
-}
 .review-form {
     margin-bottom: 24px;
 }
