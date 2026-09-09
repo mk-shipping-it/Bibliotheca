@@ -6,6 +6,33 @@ const { auth } = require('../middleware/auth')
 const { RegExpMatcher, englishDataset, englishRecommendedTransformers } = require('obscenity')
 const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers })
 const stringSimilarity = require('string-similarity')
+const { LinkifyIt } = require('linkify-it')
+const linkify = new LinkifyIt({ fuzzyLink: true, fuzzyEmail: true })
+
+const SALES_PHRASES = ['hit me up', 'call me', 'text me', 'dm me', 'message me', 'contact me', 'reach me', 'check out my', 'visit my', 'follow me', 'add me on', 'whatsapp', 'telegram', 'available anytime', 'any place you name', 'link in bio', 'buy now', 'discount code', 'promo code', 'use my code', 'limited offer', 'act now']
+const HANDLE_RE = /(^|\s)@[A-Za-z0-9_]{2,}\b/
+const PHONE_CANDIDATE_RE = /\+?[\d][\d\s().-]{6,}[\d]/g
+
+function detectShill(text) {
+  const norm = String(text)
+    .replace(/[\u200b-\u200d\ufeff]/g, '')
+    .replace(/(\w)\s+dot\s+(?=\w)/gi, '$1.')
+    .replace(/(\w)\s+at\s+(?=[A-Za-z][\w.]*\.[\w.]+)/gi, '$1@')
+  const signals = []
+  const phoneSpans = []
+  const spanRe = new RegExp(PHONE_CANDIDATE_RE.source, 'g')
+  let sm
+  while ((sm = spanRe.exec(norm))) phoneSpans.push([sm.index, sm.index + sm[0].length])
+  const isPhoneSpan = (s, e) => phoneSpans.some(([ps, pe]) => s >= ps && e <= pe)
+  const links = linkify.match(norm) || []
+  if (links.some((l) => !isPhoneSpan(l.index, l.last_index))) signals.push('link')
+  if (HANDLE_RE.test(norm)) signals.push('handle')
+  const cands = norm.match(PHONE_CANDIDATE_RE) || []
+  if (cands.some((c) => { const d = c.replace(/\D/g, ''); return d.length >= 10 || (d.length >= 7 && /[()\s.-]/.test(c)) })) signals.push('phone')
+  const low = norm.toLowerCase()
+  if (SALES_PHRASES.some((p) => low.includes(p))) signals.push('sales-phrase')
+  return signals
+}
 
 const router = express.Router()
 
@@ -93,6 +120,11 @@ router.post('/', auth, async (req, res) => {
     await User.findByIdAndUpdate(req.user.id, { lastReviewAt: new Date() })
 
     const review = await Review.create({ bookCover, bookTitle, rating: rating ?? null, text, userId: req.user.id, userName: req.user.name })
+
+    const shill = detectShill(text)
+    if (shill.length) {
+      await Report.create({ reviewId: review._id, reviewText: text, bookCover, reason: 'auto: suspected shill (' + shill.join(', ') + ')', status: 'auto-flagged', isAuto: true, reportedBy: null })
+    }
 
     res.status(201).json(review)
   } catch (e) { res.status(500).json({ error: e.message }) }

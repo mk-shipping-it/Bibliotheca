@@ -13,6 +13,7 @@
     "express": "^4.21.0",
     "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.2",
+    "linkify-it": "^6.1.0",
     "obscenity": "^0.4.x",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
