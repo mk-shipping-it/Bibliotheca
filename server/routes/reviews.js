@@ -6,6 +6,7 @@ const { auth } = require('../middleware/auth')
 const { RegExpMatcher, englishDataset, englishRecommendedTransformers } = require('obscenity')
 const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers })
 const stringSimilarity = require('string-similarity')
+const gibberish = require('gibberish-detective')()
 const { LinkifyIt } = require('linkify-it')
 const linkify = new LinkifyIt({ fuzzyLink: true, fuzzyEmail: true })
 
@@ -48,50 +49,24 @@ router.post('/', auth, async (req, res) => {
     const { bookCover, bookTitle, rating, text } = req.body
     if (!text || text.trim().length < 10) return res.status(400).json({ error: 'Review too short' })
 
-    // drop gibberish before saving (low-effort spam: "aaaaaa", "asdfasdf")
+    const scriptLetters = (text.match(/\p{Letter}/gu) || [])
+    const nonLatin = scriptLetters.filter((ch) => !/\p{Script=Latin}/u.test(ch))
+    if (scriptLetters.length >= 4 && nonLatin.length / scriptLetters.length > 0.3) {
+      await Report.create({ reviewText: text, bookCover, reason: 'auto: non-English script', status: 'auto-flagged', isAuto: true, reportedBy: null })
+      return res.status(400).json({ error: 'Only English (Latin-script) reviews are accepted.' })
+    }
+
+    // drop gibberish before saving (Markov check: "aaaaaa", "asdfasdf")
     const trimmed = text.trim()
-    const letters = trimmed.toLowerCase().replace(/[^a-z]/g, '')
-    const isGibberish =
-      /^(.)\1{5,}$/.test(trimmed) ||
-      (letters.length >= 10 && new Set(letters).size <= 3) ||
-      (letters.length >= 10 && letters.length <= 20 && (new Set(letters).size / letters.length) < 0.4) ||
-      (letters.length > 20 && new Set(letters).size <= 5)
-    if (isGibberish) {
+    if (gibberish.detect(trimmed)) {
       await Report.create({ reviewText: text, bookCover, reason: 'auto: dropped gibberish', status: 'auto-flagged', isAuto: true, reportedBy: null })
-      const u = await User.findById(req.user.id)
-      if (u) {
-        u.botScore = (u.botScore || 0) + 1
-        u.lastReviewAt = new Date()
-        if (u.botScore >= 6 && u.role !== 'admin') {
-          u.isBanned = true
-          u.bannedReason = 'auto: gibberish spam'
-          u.bannedAt = new Date()
-          await Review.deleteByUserId(req.user.id).catch(() => {})
-        }
-        await u.save()
-      }
       return res.status(400).json({ error: 'Low-effort gibberish review was not posted.' })
     }
 
-    // lifelike auto-moderation: profanity → auto-report
+    // lifelike auto-moderation: profanity → purge pre-save + auto-report
     if (matcher.hasMatch(text)) {
       await Report.create({ reviewText: text, bookCover, reason: 'auto: profanity detected', status: 'auto-flagged', isAuto: true, reportedBy: null })
-      // bump botScore but don't block — appears as flagged, admin sees it
-      const u = await User.findById(req.user.id)
-      if (u) {
-        u.botScore = (u.botScore || 0) + 1
-        u.lastReviewAt = new Date()
-        if (u.botScore >= 5 && u.role !== 'admin') {
-          u.isBanned = true
-          u.bannedReason = 'auto: profanity spam'
-          u.bannedAt = new Date()
-          await Review.deleteByUserId(req.user.id).catch(() => {})
-        }
-        await u.save()
-        if (u.isBanned) {
-          return res.status(403).json({ error: 'Account banned: ' + u.bannedReason })
-        }
-      }
+      return res.status(400).json({ error: 'Review rejected: profanity is not allowed.' })
     }
 
     // lifelike duplicate spam — same user repeating near-identical text (>0.88 similarity)
