@@ -102,7 +102,7 @@
     border-radius: 4px;
     font-size: 0.95rem;
     resize: vertical;
-    min-height: 80px;
+    min-height: 120px;
     box-sizing: border-box;
     font-family: inherit;
 }
