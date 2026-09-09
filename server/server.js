@@ -6,11 +6,23 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy
 const { connectDB } = require('./config/db')
 const User = require('./models/User')
 
+const jwt = require('jsonwebtoken')
 const app = express()
 app.set('trust proxy', 1)
 app.use(cors())
 app.use(express.json())
 app.use(express.static('..'))
+
+// decode Bearer token if present so rate limiters can identify user
+app.use((req, res, next) => {
+  const header = req.headers.authorization
+  if (header && header.startsWith('Bearer ')) {
+    try {
+      req.user = jwt.verify(header.split(' ')[1], process.env.JWT_SECRET)
+    } catch {}
+  }
+  next()
+})
 
 // lifelike bot protection — rate limit reviews/reports (auto-report + auto-kick)
 // uses express-rate-limit@8.7.0 per fetched docs (windowMs/limit/keyGenerator/handler)
@@ -26,7 +38,7 @@ const reviewLimiter = rateLimit({
     // auto-report the burst as bot-like (lifelike: appears as system report, not manual)
     const Report = require('./models/Report')
     const User = require('./models/User')
-    Report.create({ reviewText: '[auto] rate burst', reason: 'auto: 5 reviews in 10 min — suspected bot', reportedBy: null, status: 'auto-flagged', reviewId: null }).catch(()=>{})
+    Report.create({ reviewText: '[auto] rate burst', reason: 'auto: 5 reviews in 10 min — suspected bot', reportedBy: null, status: 'auto-flagged', isAuto: true, reviewId: null }).catch(()=>{})
     // bump botScore and kick if repeated (3 windows)
     if (req.user?.id) {
       User.findById(req.user.id).then(u=>{

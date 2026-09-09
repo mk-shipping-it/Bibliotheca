@@ -6,8 +6,6 @@ const { auth } = require('../middleware/auth')
 const { RegExpMatcher, englishDataset, englishRecommendedTransformers } = require('obscenity')
 const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers })
 const stringSimilarity = require('string-similarity')
-const { LinkifyIt } = require('linkify-it')
-const linkify = new LinkifyIt({ fuzzyLink: true, fuzzyEmail: true })
 
 const router = express.Router()
 
@@ -23,11 +21,50 @@ router.post('/', auth, async (req, res) => {
     const { bookCover, bookTitle, rating, text } = req.body
     if (!text || text.trim().length < 10) return res.status(400).json({ error: 'Review too short' })
 
-    // lifelike auto-moderation: profanity → auto-report (bad-words: filter.isProfane)
+    // drop gibberish before saving (low-effort spam: "aaaaaa", "asdfasdf")
+    const trimmed = text.trim()
+    const letters = trimmed.toLowerCase().replace(/[^a-z]/g, '')
+    const isGibberish =
+      /^(.)\1{5,}$/.test(trimmed) ||
+      (letters.length >= 10 && new Set(letters).size <= 3) ||
+      (letters.length >= 10 && letters.length <= 20 && (new Set(letters).size / letters.length) < 0.4) ||
+      (letters.length > 20 && new Set(letters).size <= 5)
+    if (isGibberish) {
+      await Report.create({ reviewText: text, bookCover, reason: 'auto: dropped gibberish', status: 'auto-flagged', isAuto: true, reportedBy: null })
+      const u = await User.findById(req.user.id)
+      if (u) {
+        u.botScore = (u.botScore || 0) + 1
+        u.lastReviewAt = new Date()
+        if (u.botScore >= 6 && u.role !== 'admin') {
+          u.isBanned = true
+          u.bannedReason = 'auto: gibberish spam'
+          u.bannedAt = new Date()
+          await Review.deleteByUserId(req.user.id).catch(() => {})
+        }
+        await u.save()
+      }
+      return res.status(400).json({ error: 'Low-effort gibberish review was not posted.' })
+    }
+
+    // lifelike auto-moderation: profanity → auto-report
     if (matcher.hasMatch(text)) {
       await Report.create({ reviewText: text, bookCover, reason: 'auto: profanity detected', status: 'auto-flagged', isAuto: true, reportedBy: null })
       // bump botScore but don't block — appears as flagged, admin sees it
-      await User.findByIdAndUpdate(req.user.id, { $inc: { botScore: 1 }, lastReviewAt: new Date() })
+      const u = await User.findById(req.user.id)
+      if (u) {
+        u.botScore = (u.botScore || 0) + 1
+        u.lastReviewAt = new Date()
+        if (u.botScore >= 5 && u.role !== 'admin') {
+          u.isBanned = true
+          u.bannedReason = 'auto: profanity spam'
+          u.bannedAt = new Date()
+          await Review.deleteByUserId(req.user.id).catch(() => {})
+        }
+        await u.save()
+        if (u.isBanned) {
+          return res.status(403).json({ error: 'Account banned: ' + u.bannedReason })
+        }
+      }
     }
 
     // lifelike duplicate spam — same user repeating near-identical text (>0.88 similarity)
@@ -37,9 +74,17 @@ router.post('/', auth, async (req, res) => {
       if (sim > 0.88) {
         await Report.create({ reviewText: text, bookCover, reason: `auto: duplicate spam (similarity ${sim.toFixed(2)})`, status: 'auto-flagged', isAuto: true, reportedBy: null })
         const u = await User.findById(req.user.id)
-        u.botScore = (u.botScore||0)+2
-        if (u.botScore>=5 && u.role !== 'admin') { u.isBanned=true; u.bannedReason='auto: duplicate spam burst'; u.bannedAt=new Date(); await Review.deleteByUserId(req.user.id).catch(()=>{}) }
-        await u.save()
+        if (u) {
+          u.botScore = (u.botScore || 0) + 2
+          u.lastReviewAt = new Date()
+          if (u.botScore >= 5 && u.role !== 'admin') {
+            u.isBanned = true
+            u.bannedReason = 'auto: duplicate spam burst'
+            u.bannedAt = new Date()
+            await Review.deleteByUserId(req.user.id).catch(() => {})
+          }
+          await u.save()
+        }
         return res.status(429).json({ error: 'Duplicate review detected — auto-flagged as bot-like. Slow down.' })
       }
     }
@@ -48,16 +93,6 @@ router.post('/', auth, async (req, res) => {
     await User.findByIdAndUpdate(req.user.id, { lastReviewAt: new Date() })
 
     const review = await Review.create({ bookCover, bookTitle, rating: rating ?? null, text, userId: req.user.id, userName: req.user.name })
-
-    // spamscanner: auto-report low-effort gibberish (e.g. "aaaaaa" or <3 words) — silent, admin sees it, user not blocked
-    if (/^(.)\1{5,}$/.test(text.trim()) || text.trim().split(/\s+/).length < 3) {
-      await Report.create({ reviewId: review._id, reviewText: text, bookCover, reason: 'auto: low-effort/gibberish', status: 'auto-flagged', isAuto: true, reportedBy: null })
-    }
-
-    // spamscanner: auto-report shilling (embedded email or URL) — silent, admin sees it, user not blocked
-    if (linkify.match(text)) {
-      await Report.create({ reviewId: review._id, reviewText: text, bookCover, reason: 'auto: shilling (email or URL)', status: 'auto-flagged', isAuto: true, reportedBy: null })
-    }
 
     res.status(201).json(review)
   } catch (e) { res.status(500).json({ error: e.message }) }
