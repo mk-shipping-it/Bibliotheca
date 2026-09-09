@@ -1,4 +1,4 @@
-const CACHE = 'bibliotheca-v1'
+const CACHE = 'bibliotheca-v2'
 const SHELL = [
   './',
   './index.html',

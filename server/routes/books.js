@@ -1,5 +1,19 @@
 const express = require('express')
 const axios = require('axios')
+const sanitizeHtml = require('sanitize-html')
+
+// Google Books descriptions arrive with arbitrary HTML (<p>, <br>, entities,
+// and occasionally junk). Reduce to a safe allowlist at the API boundary so
+// clients can render the description as-is with no visible tags and no XSS.
+function cleanDescription(dirty) {
+  if (!dirty) return null
+  const clean = sanitizeHtml(String(dirty), {
+    allowedTags: ['p', 'br', 'em', 'strong', 'ul', 'ol', 'li', 'blockquote', 'a'],
+    allowedAttributes: { a: ['href'] },
+    allowedSchemes: ['http', 'https', 'mailto']
+  }).trim()
+  return clean || null
+}
 
 const router = express.Router()
 
@@ -11,7 +25,7 @@ function mapVolume(item) {
     title: info.title || 'Untitled',
     author: (info.authors || ['Unknown'])[0],
     year: parseInt(info.publishedDate) || null,
-    description: info.description || null,
+    description: cleanDescription(info.description),
     coverUrl: thumb.replace('http://', 'https://'),
     googleId: item.id
   }

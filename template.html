@@ -178,7 +178,7 @@
                 .then(r => r.json())
                 .then(b => {
                     if (b.coverUrl) img.src = b.coverUrl;
-                    el.innerHTML = '<p>' + escapeHtml(b.description || 'No summary available.') + '</p>';
+                    el.innerHTML = b.description || '<p>No summary available.</p>';
                 })
                 .catch(() => { el.innerHTML = '<p>No summary available.</p>'; });
         }
